@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+from collections import Counter
 from pathlib import Path
 
 from brain_wrought_engine.fixtures.inbox_generator import (
@@ -125,6 +126,25 @@ def test_no_broken_references(tmp_path: Path) -> None:
     for entity, count in entity_count.items():
         assert count >= 2, (
             f"Entity {entity!r} appears in only {count} item(s); expected >= 2"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Entity appearance guarantee
+# ---------------------------------------------------------------------------
+
+
+def test_every_entity_appears_in_at_least_two_items(tmp_path: Path) -> None:
+    """Every entity in the pool must appear in >= 2 distinct items."""
+    d = tmp_path / "inbox"
+    manifest = generate_inbox(out_dir=d, seed=42, inbox_size="small", use_llm=False)
+    appearances: Counter[str] = Counter()
+    for item in manifest.items:
+        for entity in item.referenced_entities + item.referenced_projects:
+            appearances[entity] += 1
+    for entity in manifest.entity_pool:
+        assert appearances[entity] >= 2, (
+            f"Entity {entity!r} appeared in only {appearances[entity]} items"
         )
 
 

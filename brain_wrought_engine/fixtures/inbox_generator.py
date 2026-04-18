@@ -165,44 +165,33 @@ def _assign_entities(
     people: list[str],
     projects: list[str],
 ) -> list[tuple[list[str], list[str]]]:
-    """Return a list of (people_refs, project_refs) per item index.
+    """Return per-item (people_refs, project_refs).
 
-    Every entity in people/projects appears in at least 2 items.
-    Each item references >= 1 person and >= 1 project.
+    Contract:
+    - Every entity in people+projects appears in a distinct set of
+      >= 2 items (when total_items >= 2; single-item inboxes clamp).
+    - Each item ends up with >= 1 person AND >= 1 project.
     """
     all_entities = people + projects
-    n = len(all_entities)
-    # Build a mandatory coverage map: each entity must appear in 2 slots
-    # Slot list: indices 0..(2*n-1) map entity[i % n] to item index
-    slots = list(range(total_items)) * 2  # will be trimmed
-    rng.shuffle(slots)
-    entity_to_items: dict[str, list[int]] = {e: [] for e in all_entities}
-
-    # First pass: round-robin assignment ensuring 2 appearances per entity
-    item_pool = list(range(total_items))
-    rng.shuffle(item_pool)
-    extended = (item_pool * ((2 * n // total_items) + 2))[:2 * n]
-    for idx, entity in enumerate(all_entities):
-        entity_to_items[entity].append(extended[idx])
-        entity_to_items[entity].append(extended[n + idx])
-
-    # Build per-item entity lists from the mandatory assignments
     item_people: list[list[str]] = [[] for _ in range(total_items)]
     item_projects: list[list[str]] = [[] for _ in range(total_items)]
-    for entity, item_indices in entity_to_items.items():
+
+    for entity in all_entities:
+        k = min(2 + rng.randint(0, 2), total_items)  # 2-4 distinct items
+        indices = rng.sample(range(total_items), k)
         target = item_people if entity in people else item_projects
-        for i in item_indices:
+        for i in indices:
             if entity not in target[i]:
                 target[i].append(entity)
 
-    # Fill items that still have < 1 person or < 1 project
+    # Ensure every item has >= 1 person AND >= 1 project
     for i in range(total_items):
         if not item_people[i]:
             item_people[i].append(rng.choice(people))
         if not item_projects[i]:
             item_projects[i].append(rng.choice(projects))
 
-    return list(zip(item_people, item_projects))
+    return list(zip(item_people, item_projects, strict=True))
 
 
 # ---------------------------------------------------------------------------
