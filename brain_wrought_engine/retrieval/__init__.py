@@ -3,7 +3,7 @@
 Determinism class: FULLY_DETERMINISTIC (scorers) / SEEDED_STOCHASTIC (qrels).
 
 BW-003: P@k, Recall@k, MRR, nDCG@k scorers.
-BW-002: deterministic qrel generator.
+BW-002: deterministic qrel generator and LLM-based verifier.
 """
 
 from brain_wrought_engine.retrieval.models import (
@@ -20,6 +20,7 @@ from brain_wrought_engine.retrieval.scorer import (
     precision_at_k,
     recall_at_k,
 )
+from brain_wrought_engine.retrieval.verifier import verify_qrel
 
 __all__ = [
     "QrelEntry",
@@ -32,4 +33,5 @@ __all__ = [
     "ndcg_at_k",
     "precision_at_k",
     "recall_at_k",
+    "verify_qrel",
 ]
