@@ -15,8 +15,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from brain_wrought_engine.retrieval.qrel_generator import generate_qrels
+from brain_wrought_engine.text_utils import slug
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -188,7 +191,30 @@ def test_broken_wikilink_excluded(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 7. Empty brain raises ValueError
+# 7. text_utils.slug() property tests
+# ---------------------------------------------------------------------------
+
+
+@given(st.text())
+def test_slug_idempotent(name: str) -> None:
+    """slug(slug(x)) == slug(x) — applying twice changes nothing."""
+    assert slug(slug(name)) == slug(name)
+
+
+@given(st.text())
+def test_slug_no_spaces(name: str) -> None:
+    """slug() never contains a space character."""
+    assert " " not in slug(name)
+
+
+@given(st.text())
+def test_slug_no_slashes(name: str) -> None:
+    """slug() never contains a forward-slash."""
+    assert "/" not in slug(name)
+
+
+# ---------------------------------------------------------------------------
+# 8. Empty brain raises ValueError
 # ---------------------------------------------------------------------------
 
 
