@@ -35,6 +35,13 @@ from brain_wrought_engine.text_utils import slug
 NoteType = Literal["person", "project", "meeting", "topic"]
 EdgeType = Literal["mentions", "meeting_with", "about_project", "authored_by"]
 
+REQUIRED_FRONTMATTER_KEYS: dict[NoteType, frozenset[str]] = {
+    "person":  frozenset({"type", "created", "updated", "tags", "role"}),
+    "project": frozenset({"type", "created", "updated", "status", "owner"}),
+    "meeting": frozenset({"type", "date", "attendees", "project"}),
+    "topic":   frozenset({"type", "tags"}),
+}
+
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
@@ -63,7 +70,6 @@ class GoldGraph(BaseModel):
     seed: int
     nodes: dict[str, GoldNode]  # key is note_id
     edges: tuple[GoldEdge, ...]  # sorted by (source_id, target_id, edge_type) for determinism
-    generated_at: str  # ISO 8601
 
     model_config = {"frozen": True}
 
@@ -378,13 +384,10 @@ def generate_gold_graph(
         sorted(edges, key=lambda e: (e.source_id, e.target_id, e.edge_type))
     )
 
-    generated_at = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
     graph = GoldGraph(
         seed=seed,
         nodes=nodes,
         edges=sorted_edges,
-        generated_at=generated_at,
     )
 
     # ------------------------------------------------------------------

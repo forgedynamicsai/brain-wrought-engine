@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from brain_wrought_engine.fixtures.gold_graph import (
+    REQUIRED_FRONTMATTER_KEYS,
     CrossReference,
     GoldGraph,
     PersonEntity,
@@ -93,12 +94,8 @@ def test_determinism(
     assert g1.nodes == g2.nodes
     assert g1.edges == g2.edges
     assert g1.seed == g2.seed
-    # JSON files will differ only in generated_at (datetime.now()) — compare
-    # everything except that field.
     j1 = json.loads((out1 / "gold_graph.json").read_text())
     j2 = json.loads((out2 / "gold_graph.json").read_text())
-    j1.pop("generated_at")
-    j2.pop("generated_at")
     assert j1 == j2
 
 
@@ -137,12 +134,6 @@ def test_frontmatter_completeness(
     small_graph_inputs: tuple[list[PersonEntity], list[ProjectEntity], list[CrossReference]],
 ) -> None:
     """Every node has all required frontmatter keys for its note_type."""
-    required: dict[str, set[str]] = {
-        "person": {"type", "created", "updated", "tags", "role"},
-        "project": {"type", "created", "updated", "status", "owner"},
-        "meeting": {"type", "date", "attendees", "project"},
-        "topic": {"type", "tags"},
-    }
     people, projects, cross_refs = small_graph_inputs
     graph = generate_gold_graph(
         seed=42,
@@ -151,7 +142,7 @@ def test_frontmatter_completeness(
         cross_references=cross_refs,
     )
     for note_id, node in graph.nodes.items():
-        required_keys = required[node.note_type]
+        required_keys = REQUIRED_FRONTMATTER_KEYS[node.note_type]
         actual_keys = set(node.frontmatter.keys())
         missing = required_keys - actual_keys
         assert not missing, (
