@@ -154,4 +154,5 @@ def ndcg_at_k(
     ideal_hits = min(len(relevant), k)
     idcg: float = sum(1.0 / math.log2(i + 1) for i in range(1, ideal_hits + 1))
 
-    return dcg / idcg
+    # clamp: floating-point DCG/IDCG can exceed 1.0 by a ULP for perfect rankings
+    return min(dcg / idcg, 1.0)
