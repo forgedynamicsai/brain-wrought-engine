@@ -106,4 +106,4 @@ def test_no_broken_links(vault: Path) -> None:
             if _normalise(target) not in valid_stems:
                 broken.append(f"{note.name}: [[{target}]]")
 
-    assert not broken, f"Broken wikilinks found:\n" + "\n".join(broken)
+    assert not broken, "Broken wikilinks found:\n" + "\n".join(broken)

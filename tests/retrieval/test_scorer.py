@@ -270,7 +270,10 @@ def test_precision_is_one_when_top_k_subset_of_relevant(
     """If retrieved[:k] ⊆ relevant, then P@k == 1.0."""
     # Build a retrieved tuple whose first k elements are all from relevant
     relevant_list = sorted(relevant)
-    top_k = relevant_list[:k] if len(relevant_list) >= k else relevant_list * (k // len(relevant_list) + 1)
+    top_k = (
+        relevant_list[:k] if len(relevant_list) >= k
+        else relevant_list * (k // len(relevant_list) + 1)
+    )
     top_k = top_k[:k]
     retrieved = tuple(top_k)
     score = precision_at_k(relevant, retrieved, k)
