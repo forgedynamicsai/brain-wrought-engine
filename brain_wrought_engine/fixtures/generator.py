@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import random
 import textwrap
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -369,7 +369,7 @@ def generate_brain(
     all_entity_names = [name for _, name in entity_slots]
 
     # Fixed base timestamp derived from seed for determinism
-    base_ts = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    base_ts = datetime(2024, 1, 1, tzinfo=UTC)
 
     written: list[Path] = []
     for note_type, name in entity_slots:

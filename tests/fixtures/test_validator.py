@@ -36,7 +36,7 @@ def valid_vault(tmp_path: Path) -> Path:
 def test_valid_brain_passes(valid_vault: Path) -> None:
     """A freshly generated vault must validate with zero errors."""
     errors = validate_brain(valid_vault)
-    assert errors == [], f"Unexpected errors in valid vault:\n" + "\n".join(errors)
+    assert errors == [], "Unexpected errors in valid vault:\n" + "\n".join(errors)
 
 
 # ---------------------------------------------------------------------------
