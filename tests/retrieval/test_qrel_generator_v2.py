@@ -187,7 +187,7 @@ def test_verifier_mock_agreement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         query_type="factual",
         expected_abstain=False,
     )
-    vault_summary = {"alice": "Alice manages Project Aurora", "bob": "Bob assists Alice"}
+    vault_summary = {"alice": "Alice manages the Chrysalis rollout", "bob": "Bob assists Alice"}
 
     call_count = 0
 
@@ -211,7 +211,7 @@ def test_verifier_mock_agreement_abstention(
     """Mocked LLM returning answerable=false for abstention → (True, entry)."""
     entry = QrelEntry(
         query_id="q0001",
-        query_text="What is Alice's relationship with Team Nexus?",
+        query_text="What is Alice's relationship with the Xenotopia initiative?",
         relevant_note_ids=frozenset(),
         query_type="abstention",
         expected_abstain=True,
@@ -268,7 +268,7 @@ def test_verifier_mock_disagreement_abstention(
     """Abstention: LLM always says answerable=True → 3 retries → (False, None)."""
     entry = QrelEntry(
         query_id="q0003",
-        query_text="What is Alice's relationship with Dr. Chen?",
+        query_text="What is Alice's relationship with Dr. Zephyr Ixion?",
         relevant_note_ids=frozenset(),
         query_type="abstention",
         expected_abstain=True,

@@ -61,7 +61,7 @@ def test_valid_abstention_entry() -> None:
         query_type="abstention",
         relevant_note_ids=frozenset(),
         expected_abstain=True,
-        query_text="What is Alice's relationship with Project Aurora?",
+        query_text="What is Alice's relationship with the Hollowgram summit?",
     )
     assert entry.expected_abstain is True
     assert entry.relevant_note_ids == frozenset()

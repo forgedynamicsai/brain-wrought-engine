@@ -44,14 +44,20 @@ _GENERIC_TIMEFRAMES = [
     "last month", "this week", "last week",
 ]
 
-# Fictional suffixes for abstention queries — plausible-sounding but non-existent
+# Suffixes must be obviously fictional to the verifier. Avoid common names,
+# generic corporate terms, or routine business events that could plausibly
+# exist in any real vault — if Sonnet hedges, the verifier rejects the qrel.
 _FICTIONAL_SUFFIXES = [
-    "Project Aurora",
-    "Team Nexus",
-    "Dr. Chen",
-    "the Q3 review",
-    "the offsite",
-    "the migration sprint",
+    "the Xenotopia initiative",
+    "the Paradox Engine project",
+    "Argus Prime",
+    "the Nullspace protocol",
+    "Dr. Zephyr Ixion",
+    "the Vermillion accord",
+    "Operation Kaleidoscope",
+    "the Hollowgram summit",
+    "Tesseract Division",
+    "the Chrysalis rollout",
 ]
 
 # Query templates per type
