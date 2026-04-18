@@ -1,8 +1,9 @@
-"""Pydantic v2 input/output models for retrieval scoring.
+"""Pydantic v2 data models for the retrieval axis.
 
-Determinism class: FULLY_DETERMINISTIC
+Determinism class: FULLY_DETERMINISTIC — models are pure data containers.
 
-BW-003
+BW-003: scorer input/output models.
+BW-002: qrel entry and set models.
 """
 
 from __future__ import annotations
@@ -42,3 +43,23 @@ class ScoreOutput(BaseModel):
         if not (0.0 <= self.score <= 1.0):
             raise ValueError(f"score must be in [0.0, 1.0], got {self.score}")
         return self
+
+
+class QrelEntry(BaseModel):
+    """A single query with its relevant note IDs."""
+
+    query_id: str
+    query_text: str
+    relevant_note_ids: frozenset[str]
+
+    model_config = {"frozen": True}
+
+
+class QrelSet(BaseModel):
+    """A complete set of query-relevance judgments for one brain vault."""
+
+    qrel_version: str
+    seed: int
+    entries: tuple[QrelEntry, ...]
+
+    model_config = {"frozen": True}

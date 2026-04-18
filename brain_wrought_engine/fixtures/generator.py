@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from brain_wrought_engine.fixtures.entity_pool import COMPANIES, PEOPLE, PROJECTS
+from brain_wrought_engine.text_utils import slug as _slug
 
 # ---------------------------------------------------------------------------
 # Note-type catalogue
@@ -97,10 +98,6 @@ _BODY_TEMPLATES: dict[str, str] = {
 def _iso_timestamp(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
-def _slug(name: str) -> str:
-    """Convert an entity name to a safe filename stem."""
-    return name.replace(" ", "_").replace("/", "-")
 
 
 def _yaml_list(items: list[str]) -> str:
