@@ -88,22 +88,27 @@ def test_query_count_with_replacement(tmp_path: Path) -> None:
 
 
 def test_self_relevance(tmp_path: Path) -> None:
-    """Every entry must include its own note ID in relevant_note_ids."""
+    """Every non-abstention entry must include its own note ID in relevant_note_ids."""
     brain_dir = tmp_path / "brain"
     _minimal_brain(brain_dir, count=10)
 
     qrels = generate_qrels(brain_dir=brain_dir, seed=13, query_count=10)
 
     for entry in qrels.entries:
-        # Derive the expected note_id from the query_id position
-        # We just verify that relevant_note_ids is non-empty and contains
+        # Abstention entries intentionally have empty relevant_note_ids — skip them.
+        if entry.query_type == "abstention":
+            assert entry.relevant_note_ids == frozenset(), (
+                f"Abstention entry {entry.query_id} should have empty relevant_note_ids"
+            )
+            continue
+        # Non-abstention: relevant_note_ids must be non-empty and contain
         # some valid stem — the actual note sampled must be in the set.
         assert entry.relevant_note_ids, (
             f"Entry {entry.query_id} has empty relevant_note_ids"
         )
 
     # Stronger check: generate with all unique notes and verify each sampled
-    # note's stem appears in its own entry
+    # note's stem appears in its own non-abstention entry
     brain_dir2 = tmp_path / "brain2"
     stems = [f"alpha_{i}" for i in range(10)]
     notes = {s: f"# {s}\n\nNo links here.\n" for s in stems}
@@ -112,7 +117,9 @@ def test_self_relevance(tmp_path: Path) -> None:
     qrels2 = generate_qrels(brain_dir=brain_dir2, seed=5, query_count=10)
     sampled_ids = {n_id for entry in qrels2.entries for n_id in entry.relevant_note_ids}
     for entry in qrels2.entries:
-        # Each entry's relevant_note_ids must contain at least one stem
+        if entry.query_type == "abstention":
+            continue
+        # Each non-abstention entry's relevant_note_ids must contain at least one stem
         # from the vault (the note itself)
         overlap = entry.relevant_note_ids & set(stems)
         assert overlap, (
@@ -132,18 +139,15 @@ def test_wikilink_expansion(tmp_path: Path) -> None:
     """A note with [[wikilinks]] must include the linked note IDs in relevant_note_ids."""
     brain_dir = tmp_path / "brain"
 
-    # alice links to bob and carol
     alice_content = "# Alice\n\nShe knows [[bob]] and [[carol]].\n"
     bob_content = "# Bob\n\nNo links.\n"
     carol_content = "# Carol\n\nNo links.\n"
 
-    _write_notes(
-        brain_dir,
-        {"alice": alice_content, "bob": bob_content, "carol": carol_content},
-    )
+    _write_notes(brain_dir, {"alice": alice_content, "bob": bob_content, "carol": carol_content})
 
-    # Force alice to be sampled by using query_count == 3 (all notes)
-    qrels = generate_qrels(brain_dir=brain_dir, seed=0, query_count=3)
+    # query_count=100 with 3-note vault → 70 non-abstention samples via rng.choices;
+    # alice is virtually guaranteed to appear ((2/3)^70 ≈ 1e-13 chance she doesn't).
+    qrels = generate_qrels(brain_dir=brain_dir, seed=0, query_count=100)
 
     alice_entry = next(
         (e for e in qrels.entries if "alice" in e.relevant_note_ids), None
@@ -170,13 +174,14 @@ def test_broken_wikilink_excluded(tmp_path: Path) -> None:
     """
     brain_dir = tmp_path / "brain"
 
-    # alice links to bob (exists) and ghost (does not exist)
     alice_content = "# Alice\n\nShe knows [[bob]] and [[ghost]].\n"
     bob_content = "# Bob\n\nNo links.\n"
 
     _write_notes(brain_dir, {"alice": alice_content, "bob": bob_content})
 
-    qrels = generate_qrels(brain_dir=brain_dir, seed=0, query_count=2)
+    # query_count=100 with 2-note vault → 70 non-abstention samples via rng.choices;
+    # alice is virtually guaranteed to appear.
+    qrels = generate_qrels(brain_dir=brain_dir, seed=0, query_count=100)
 
     alice_entry = next(
         (e for e in qrels.entries if "alice" in e.relevant_note_ids), None

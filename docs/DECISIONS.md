@@ -119,3 +119,19 @@ Format: date, decision, reasoning, alternative considered.
 ---
 
 *v2 — Apr 19, 2026. Contains 2026-04-19 correction for target venue strategy. See that entry for details on what was corrected and why.*
+
+## 2026-04-19 — Abstention queries require unambiguously fictional content
+
+The first BW-002b pass produced a `_FICTIONAL_SUFFIXES` list of plausible-sounding
+corporate/personal entities ("Dr. Chen", "Project Aurora", "the Q3 review"). Review
+caught that these are common in real personal brains and would cause Sonnet to
+hallucinate answerability during verification, gutting the abstention axis signal.
+
+**Principle:** abstention-query content must be fictional to a *human reader*, not
+just absent from the current vault. Any entity that could plausibly exist in any real
+personal brain is not a safe abstention probe.
+
+**Action:** replaced with sci-fi-adjacent invented entities ("Xenotopia initiative",
+"Dr. Zephyr Ixion", etc.). When rotating the abstention suite in future v1.x
+releases, apply this same standard: if a suffix sounds like something a real
+knowledge worker might have written about, it is not fictional enough.
