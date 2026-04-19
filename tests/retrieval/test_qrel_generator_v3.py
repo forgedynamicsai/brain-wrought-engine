@@ -5,10 +5,15 @@ against the fixed version on this branch:
 
   1. test_no_newlines_in_queries       — no query_text contains '\\n'
   2. test_no_heading_tokens_in_queries — no query_text contains standard section headings
-  3. test_relevance_invariant          — every qrel's relevant_note_ids actually mentions
-                                         the query entity (frontmatter or wikilink)
+  3. test_relevance_invariant          — every qrel's relevant_note_ids equals the mention
+                                         set of the entity referenced in query_text
   4. test_abstention_correctness       — abstention queries reference fictional entities
                                          not found in the vault entity pool
+
+Additional test:
+  5. test_self_relevance_retained      — for any non-abstention entry about entity E,
+                                         if a note with stem slug(E) exists, that note
+                                         must appear in relevant_note_ids.
 
 All tests use generate_brain(seed=42, fixture_index=0, note_count=50, use_llm=False)
 to produce a realistic vault with proper YAML frontmatter.
@@ -16,6 +21,7 @@ to produce a realistic vault with proper YAML frontmatter.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -26,6 +32,7 @@ from brain_wrought_engine.retrieval.qrel_generator import (
     _build_entity_index,
     generate_qrels,
 )
+from brain_wrought_engine.text_utils import slug
 
 # Standard section headings injected by generator.py body templates.
 # These must never appear verbatim in query_text.
@@ -33,6 +40,32 @@ _SECTION_HEADINGS = {"Overview", "Background", "Notes", "Connections", "Key Peop
 
 # Number of qrels to generate in each test — enough to exercise all types.
 _QUERY_COUNT = 20
+
+# Regex patterns that extract the entity (or topic acting as entity) from each
+# query template.  Every non-abstention template must match exactly one pattern.
+_ENTITY_PATTERNS: list[re.Pattern[str]] = [
+    # Factual
+    re.compile(r"^What projects is (.+) working on\?$"),
+    re.compile(r"^When did (.+) ship\?$"),
+    re.compile(r"^What does (.+) think about .+\?$"),
+    # Temporal (topic always embedded after BW-002c fix)
+    re.compile(r"^Who did I meet about (.+) in .+\?$"),
+    re.compile(r"^What changed this month related to (.+)\?$"),
+    re.compile(r"^What was discussed about (.+) in .+\?$"),
+    # Personalization (entity always embedded after BW-002c fix)
+    re.compile(r"^Show me my notes about (.+)$"),
+    re.compile(r"^What are my thoughts on (.+)\?$"),
+    re.compile(r"^What have I written about (.+)\?$"),
+]
+
+
+def _extract_query_entity(query_text: str) -> str | None:
+    """Return the entity name embedded in query_text, or None if no pattern matches."""
+    for pattern in _ENTITY_PATTERNS:
+        m = pattern.match(query_text)
+        if m:
+            return m.group(1)
+    return None
 
 
 @pytest.fixture(scope="module")
@@ -85,16 +118,17 @@ def test_no_heading_tokens_in_queries(qrel_set) -> None:  # type: ignore[no-unty
 
 
 # ---------------------------------------------------------------------------
-# 3. Relevance invariant: every cited note actually mentions the query entity
+# 3. Relevance invariant: relevant_note_ids matches the entity referenced in text
 # ---------------------------------------------------------------------------
 
 
 def test_relevance_invariant(vault_dir: Path, qrel_set) -> None:  # type: ignore[no-untyped-def]
-    """For every non-abstention qrel, every note in relevant_note_ids must actually
-    mention the query's referenced entity (in frontmatter entities: or body wikilinks).
+    """For every non-abstention qrel, relevant_note_ids must equal entity_to_notes for the
+    specific entity referenced in query_text (extracted via template pattern matching).
 
-    This catches the old bug where relevant_note_ids was "source note + its wikilinked
-    notes" regardless of whether those notes had anything to do with the query entity.
+    This is stronger than checking that relevant_note_ids matches SOME entity's mention set:
+    it verifies the correct entity was used, preventing coincidental matches where an
+    unrelated entity happens to have the same mention set.
     """
     note_paths = sorted(vault_dir.glob("*.md"))
     _, entity_to_notes = _build_entity_index(note_paths)
@@ -103,18 +137,18 @@ def test_relevance_invariant(vault_dir: Path, qrel_set) -> None:  # type: ignore
         if entry.query_type == "abstention":
             continue
 
-        # Determine which entity drove the relevance set by finding the entity whose
-        # entity_to_notes value matches the entry's relevant_note_ids.
-        # If no entity matches, the relevance set is wrong.
-        matched = any(
-            entity_to_notes.get(entity) == entry.relevant_note_ids
-            for entity in entity_to_notes
-        )
-        assert matched, (
+        entity = _extract_query_entity(entry.query_text)
+        assert entity is not None, (
             f"Entry {entry.query_id} ({entry.query_type!r}): "
-            f"relevant_note_ids={entry.relevant_note_ids!r} does not match any entity's "
-            f"mention set. The relevant set may contain notes that don't actually "
-            f"mention the query entity."
+            f"could not extract entity from query_text={entry.query_text!r}. "
+            f"All non-abstention templates must embed the relevant entity in query text."
+        )
+
+        expected = entity_to_notes.get(entity, frozenset())
+        assert entry.relevant_note_ids == expected, (
+            f"Entry {entry.query_id} ({entry.query_type!r}): "
+            f"relevant_note_ids={entry.relevant_note_ids!r} != "
+            f"entity_to_notes[{entity!r}]={expected!r}"
         )
 
 
@@ -159,3 +193,35 @@ def test_abstention_correctness(vault_dir: Path, qrel_set) -> None:  # type: ign
             f"Abstention entry {entry.query_id} query_text does not contain any "
             f"fictional suffix: {entry.query_text!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# 5. Self-relevance retained: entity's own note is in its relevant set
+# ---------------------------------------------------------------------------
+
+
+def test_self_relevance_retained(vault_dir: Path, qrel_set) -> None:  # type: ignore[no-untyped-def]
+    """For any non-abstention entry whose query references entity E, if a note with stem
+    slug(E) exists in the vault then slug(E) must appear in entry.relevant_note_ids.
+
+    This guards against the bug where Beatrix_Müller.md was excluded from queries about
+    Beatrix Müller because her own frontmatter didn't list herself as an entity.
+    """
+    note_paths = sorted(vault_dir.glob("*.md"))
+    stem_set = {p.stem for p in note_paths}
+
+    for entry in qrel_set.entries:
+        if entry.query_type == "abstention":
+            continue
+
+        entity = _extract_query_entity(entry.query_text)
+        if entity is None:
+            continue
+
+        entity_slug = slug(entity)
+        if entity_slug in stem_set:
+            assert entity_slug in entry.relevant_note_ids, (
+                f"Entry {entry.query_id} ({entry.query_type!r}): "
+                f"entity {entity!r} has own note {entity_slug!r} in vault "
+                f"but it is absent from relevant_note_ids={entry.relevant_note_ids!r}"
+            )

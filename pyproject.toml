@@ -16,7 +16,7 @@ python = "3.12.3"
 pydantic = "2.10.4"
 litellm = "1.56.4"
 numpy = "2.2.1"
-pyyaml = "6.0.1"
+pyyaml = "6.0.3"
 scipy = "1.15.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -26,6 +26,7 @@ pytest-cov = "6.0.0"
 mypy = "1.13.0"
 ruff = "0.8.6"
 hypothesis = "6.122.3"
+types-pyyaml = "6.0.12.20260408"
 
 [tool.ruff]
 line-length = 100

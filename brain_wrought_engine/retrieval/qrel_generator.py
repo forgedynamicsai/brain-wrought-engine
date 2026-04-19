@@ -10,8 +10,12 @@ generate_qrels(*, brain_dir, seed, query_count, qrel_version) -> QrelSet
 Relevance definition
 --------------------
 A note N is relevant to a query Q about entity E iff:
-  - E appears in N's frontmatter ``entities:`` list, OR
-  - E appears as a ``[[wikilink]]`` target in N's body.
+  (a) slug(N's stem) == slug(E), OR
+  (b) E appears in N's frontmatter ``entities:`` list, OR
+  (c) E appears as a ``[[wikilink]]`` target in N's body.
+
+Clause (a) ensures that entity E's own note is always relevant to queries about E,
+even when E's frontmatter does not list itself in ``entities:``.
 
 Entity pool
 -----------
@@ -31,6 +35,7 @@ from pathlib import Path
 import yaml  # type: ignore[import-untyped]
 
 from brain_wrought_engine.retrieval.models import QrelEntry, QrelSet
+from brain_wrought_engine.text_utils import slug
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 _FRONTMATTER_RE = re.compile(r"^---\n.*?\n---\n", re.DOTALL)
@@ -77,15 +82,15 @@ _FACTUAL_TEMPLATES = [
 ]
 
 _TEMPORAL_TEMPLATES = [
-    "Who did I meet in {timeframe}?",
+    "Who did I meet about {topic} in {timeframe}?",
     "What changed this month related to {topic}?",
-    "What was discussed in {timeframe}?",
+    "What was discussed about {topic} in {timeframe}?",
 ]
 
 _PERSONALIZATION_TEMPLATES = [
-    "Show me my notes about {topic}",
+    "Show me my notes about {entity}",
     "What are my thoughts on {entity}?",
-    "What have I written about {topic}?",
+    "What have I written about {entity}?",
 ]
 
 
@@ -163,12 +168,19 @@ def _build_entity_index(
     entity_pool = sorted(entity_pool_set)
 
     entity_to_notes_mut: dict[str, set[str]] = {e: set() for e in entity_pool}
+    stem_set = set(note_contents.keys())
     for note_id, content in note_contents.items():
         fm_entities = set(_parse_frontmatter_entities(content))
         wikilink_targets = _extract_wikilinks(content)
         for entity in entity_pool:
             if entity in fm_entities or entity in wikilink_targets:
                 entity_to_notes_mut[entity].add(note_id)
+
+    # Clause (a): entity's own note is always relevant to queries about that entity.
+    for entity in entity_pool:
+        entity_slug = slug(entity)
+        if entity_slug in stem_set:
+            entity_to_notes_mut[entity].add(entity_slug)
 
     return entity_pool, {k: frozenset(v) for k, v in entity_to_notes_mut.items()}
 
