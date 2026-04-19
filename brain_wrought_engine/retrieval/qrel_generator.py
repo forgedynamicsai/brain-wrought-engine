@@ -32,7 +32,7 @@ import random
 import re
 from pathlib import Path
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from brain_wrought_engine.retrieval.models import QrelEntry, QrelSet
 from brain_wrought_engine.text_utils import slug
