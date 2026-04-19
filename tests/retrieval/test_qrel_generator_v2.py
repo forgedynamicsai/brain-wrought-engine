@@ -34,14 +34,32 @@ def _write_notes(brain_dir: Path, notes: dict[str, str]) -> None:
         (brain_dir / f"{stem}.md").write_text(content, encoding="utf-8")
 
 
+def _note_with_entities(name: str, entities: list[str]) -> str:
+    """Return note content with YAML frontmatter including an entities: list."""
+    if entities:
+        ent_lines = "\n".join(f"  - {e}" for e in entities)
+        ent_block = f"\n{ent_lines}"
+    else:
+        ent_block = " []"
+    return (
+        f"---\ntype: person\ncreated: 2024-01-01T00:00:00Z\n"
+        f"updated: 2024-01-01T00:00:00Z\ntags:\n  - person\n"
+        f"entities:{ent_block}\nstate: active\n---\n"
+        f"# {name}\n\nBody text for {name}.\n"
+    )
+
+
 def _vault_with_titles(brain_dir: Path, count: int = 20) -> dict[str, str]:
     """Create a vault where each note has a unique H1 title; return stem→title map."""
     notes: dict[str, str] = {}
     title_map: dict[str, str] = {}
+    all_names = [f"Note Number {i}" for i in range(count)]
     for i in range(count):
         stem = f"note_{i:02d}"
-        title = f"Note Number {i}"
-        notes[stem] = f"# {title}\n\nBody text for note {i}.\n"
+        title = all_names[i]
+        others = all_names[:i] + all_names[i + 1 :]
+        linked = others[:3]
+        notes[stem] = _note_with_entities(title, linked)
         title_map[stem] = title
     _write_notes(brain_dir, notes)
     return title_map
@@ -55,11 +73,12 @@ def _vault_with_titles(brain_dir: Path, count: int = 20) -> dict[str, str]:
 def test_distribution_enforcement(tmp_path: Path) -> None:
     """100 qrels → exactly 30 factual, 20 temporal, 20 personalization, 30 abstention."""
     brain_dir = tmp_path / "brain"
-    # Need enough notes to avoid replacement-forced duplicates in the test assertion
-    _write_notes(
-        brain_dir,
-        {f"note_{i:03d}": f"# Note {i}\n\nBody.\n" for i in range(100)},
-    )
+    all_names = [f"Entity {i:03d}" for i in range(100)]
+    notes: dict[str, str] = {}
+    for i, name in enumerate(all_names):
+        others = all_names[:i] + all_names[i + 1 :]
+        notes[f"note_{i:03d}"] = _note_with_entities(name, others[:3])
+    _write_notes(brain_dir, notes)
 
     qrels = generate_qrels(brain_dir=brain_dir, seed=42, query_count=100)
     assert len(qrels.entries) == 100
@@ -128,10 +147,12 @@ def test_query_text_not_title(tmp_path: Path) -> None:
 def test_abstention_invariant(tmp_path: Path) -> None:
     """Abstention qrels must have relevant_note_ids=frozenset() and expected_abstain=True."""
     brain_dir = tmp_path / "brain"
-    _write_notes(
-        brain_dir,
-        {f"note_{i}": f"# Note {i}\n\nBody.\n" for i in range(10)},
-    )
+    names = [f"Entity {i}" for i in range(10)]
+    notes = {
+        f"note_{i}": _note_with_entities(name, [n for n in names if n != name][:3])
+        for i, name in enumerate(names)
+    }
+    _write_notes(brain_dir, notes)
 
     qrels = generate_qrels(brain_dir=brain_dir, seed=99, query_count=20)
     abstention_entries = [e for e in qrels.entries if e.query_type == "abstention"]
@@ -150,10 +171,12 @@ def test_abstention_invariant(tmp_path: Path) -> None:
 def test_non_abstention_has_nonempty_relevant(tmp_path: Path) -> None:
     """Non-abstention qrels must have non-empty relevant_note_ids."""
     brain_dir = tmp_path / "brain"
-    _write_notes(
-        brain_dir,
-        {f"note_{i}": f"# Note {i}\n\nBody.\n" for i in range(10)},
-    )
+    names = [f"Entity {i}" for i in range(10)]
+    notes = {
+        f"note_{i}": _note_with_entities(name, [n for n in names if n != name][:3])
+        for i, name in enumerate(names)
+    }
+    _write_notes(brain_dir, notes)
 
     qrels = generate_qrels(brain_dir=brain_dir, seed=5, query_count=20)
     for entry in qrels.entries:
@@ -299,10 +322,12 @@ def test_verifier_mock_disagreement_abstention(
 def test_determinism_preserved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Same seed with mocked verifier → identical QrelSet."""
     brain_dir = tmp_path / "brain"
-    _write_notes(
-        brain_dir,
-        {f"note_{i}": f"# Note {i}\n\nBody text for note {i}.\n" for i in range(10)},
-    )
+    names = [f"Entity {i}" for i in range(10)]
+    notes = {
+        f"note_{i}": _note_with_entities(name, [n for n in names if n != name][:3])
+        for i, name in enumerate(names)
+    }
+    _write_notes(brain_dir, notes)
 
     qrels_a = generate_qrels(brain_dir=brain_dir, seed=42, query_count=10)
     qrels_b = generate_qrels(brain_dir=brain_dir, seed=42, query_count=10)
@@ -317,10 +342,12 @@ def test_determinism_preserved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 def test_query_ids_sequential(tmp_path: Path) -> None:
     """Query IDs must be q0000, q0001, … in order."""
     brain_dir = tmp_path / "brain"
-    _write_notes(
-        brain_dir,
-        {f"note_{i}": f"# Note {i}\n\nBody.\n" for i in range(10)},
-    )
+    names = [f"Entity {i}" for i in range(10)]
+    notes = {
+        f"note_{i}": _note_with_entities(name, [n for n in names if n != name][:3])
+        for i, name in enumerate(names)
+    }
+    _write_notes(brain_dir, notes)
 
     qrels = generate_qrels(brain_dir=brain_dir, seed=1, query_count=5)
     for i, entry in enumerate(qrels.entries):
