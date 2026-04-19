@@ -3,6 +3,12 @@
 BW-009 through BW-013: implementation target for Phase 2.
 """
 
+from brain_wrought_engine.ingestion.backlink_f1 import (
+    BacklinkF1Input,
+    SubmissionEdge,
+    compute_f1_components,
+    score_backlink_f1,
+)
 from brain_wrought_engine.ingestion.citation_accuracy import (
     CitationAccuracyInput,
     CitationCounters,
@@ -14,12 +20,16 @@ from brain_wrought_engine.ingestion.entity_recall import EntityRecallInput, scor
 from brain_wrought_engine.ingestion.setup_friction import SetupBlock, score_setup_friction
 
 __all__ = [
+    "BacklinkF1Input",
     "CitationAccuracyInput",
     "CitationCounters",
     "EntityRecallInput",
     "SetupBlock",
     "SubmissionCitation",
+    "SubmissionEdge",
     "compute_citation_counters",
+    "compute_f1_components",
+    "score_backlink_f1",
     "score_citation_accuracy",
     "score_entity_recall",
     "score_setup_friction",
