@@ -17,20 +17,32 @@ from brain_wrought_engine.ingestion.citation_accuracy import (
     score_citation_accuracy,
 )
 from brain_wrought_engine.ingestion.entity_recall import EntityRecallInput, score_entity_recall
+from brain_wrought_engine.ingestion.schema_completeness import (
+    CompletenessBreakdown,
+    SchemaCompletenessInput,
+    SubmissionNoteSchema,
+    compute_completeness_breakdown,
+    score_schema_completeness,
+)
 from brain_wrought_engine.ingestion.setup_friction import SetupBlock, score_setup_friction
 
 __all__ = [
     "BacklinkF1Input",
     "CitationAccuracyInput",
     "CitationCounters",
+    "CompletenessBreakdown",
     "EntityRecallInput",
+    "SchemaCompletenessInput",
     "SetupBlock",
     "SubmissionCitation",
     "SubmissionEdge",
+    "SubmissionNoteSchema",
     "compute_citation_counters",
+    "compute_completeness_breakdown",
     "compute_f1_components",
     "score_backlink_f1",
     "score_citation_accuracy",
     "score_entity_recall",
+    "score_schema_completeness",
     "score_setup_friction",
 ]
